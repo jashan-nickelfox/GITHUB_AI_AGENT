@@ -1,0 +1,39 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
+# Streamlit
+.streamlit/
+.cache/
+# Sometimes Streamlit Cloud uses this file to cache credentials
+~/.streamlit/secrets.toml
+
+# Environment variables and secrets
+.env
+.env.*
+*.env
+
+# VSCode and other IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints
+
+# Mac and Linux hidden files
+*.~*
+*~
+
+# Node modules (if you add frontend JS in future)
+node_modules/
