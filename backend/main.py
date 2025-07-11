@@ -67,7 +67,7 @@ async def github_callback(code: str, state: str):
             raise HTTPException(401, detail="GitHub OAuth failed")
         user_tokens[state] = access_token
     # Redirect to Streamlit, with state param
-    return RedirectResponse(f"http://localhost:8501/?state={state}")
+    return RedirectResponse(f"https://nfx-pr-reviewer.streamlit.app/?state={state}")
 
 @app.get("/api/list-prs")
 async def list_prs(repo_url: str, state: str):
