@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import webbrowser
 
-BACKEND = "http://localhost:8000"
+BACKEND = "https://ai-pr-backend.onrender.com"
 
 st.set_page_config(page_title="AI PR Review Agent", page_icon="🤖", layout="centered")
 st.title("🤖 AI PR Review Agent (GitHub)")
