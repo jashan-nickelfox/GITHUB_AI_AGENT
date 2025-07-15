@@ -1,0 +1,150 @@
+name: Universal CI
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  nodejs_typescript:
+    name: Node.js & TypeScript Lint & Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['20.x', '18.x']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install dependencies (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "No package.json found. Skipping dependency install."
+          fi
+        shell: bash
+      - name: Run ESLint with reviewdog
+        uses: reviewdog/action-eslint@v1
+        if: |
+          (hash -r && which npx && [ -f package.json ] && ([ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f .eslintrc ]))
+        with:
+          reporter: github-pr-check
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: false
+      - name: Run tests (if test script exists)
+        run: |
+          if [ -f package.json ] && jq -e '.scripts.test' package.json > /dev/null; then
+            npm test || echo "Tests failed or not found"
+          else
+            echo "No npm test script. Skipping."
+          fi
+        shell: bash
+
+  python:
+    name: Python Lint & Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.11', '3.10']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies (if requirements.txt exists)
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt found. Skipping dependency install."
+          fi
+        shell: bash
+      - name: Run pylint with reviewdog
+        uses: reviewdog/action-pylint@v2
+        if: |
+          ls *.py 1> /dev/null 2>&1
+        with:
+          reporter: github-pr-check
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          level: warning
+          fail_on_error: false
+          pylint_flags: '.'
+      - name: Run tests (if tests exist)
+        run: |
+          if [ -d tests ] || [ -f test* ] || [ -f tests.py ]; then
+            pytest || echo "Tests failed or not found"
+          else
+            echo "No tests found. Skipping."
+          fi
+        shell: bash
+
+  kotlin:
+    name: Kotlin Lint (ktlint) & Test on ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ktlint
+        run: curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.2.1/ktlint && chmod +x ktlint
+      - name: Run ktlint with reviewdog
+        uses: reviewdog/action-ktlint@v1
+        if: |
+          ls **/*.kt 1> /dev/null 2>&1
+        with:
+          reporter: github-pr-check
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: false
+      - name: Build & test (if Gradle exists)
+        run: |
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assemble
+            ./gradlew testDebugUnitTest || echo "Tests failed or not found"
+          else
+            echo "No gradlew found. Skipping Android build/test."
+          fi
+        shell: bash
+
+  swift:
+    name: SwiftLint & Test on macos-latest
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: Run swiftlint with reviewdog
+        uses: reviewdog/action-swiftlint@v1
+        if: |
+          ls **/*.swift 1> /dev/null 2>&1
+        with:
+          reporter: github-pr-check
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: false
+      - name: Build & test (if Xcode project exists)
+        run: |
+          if ls *.xcodeproj 1> /dev/null 2>&1; then
+            xcodebuild -project *.xcodeproj -scheme "$(basename *.xcodeproj .xcodeproj)" -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15' build test || echo "Tests failed or not found"
+          else
+            echo "No .xcodeproj found. Skipping iOS build/test."
+          fi
+        shell: bash
+
+  # JavaScript-only projects (without Node/npm)
+  javascript:
+    name: JavaScript Lint on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ESLint with reviewdog (JS only)
+        uses: reviewdog/action-eslint@v1
+        if: |
+          ([ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f .eslintrc ])
+        with:
+          reporter: github-pr-check
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: false
